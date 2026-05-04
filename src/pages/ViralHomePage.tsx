@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
@@ -20,6 +20,7 @@ import bottom1 from "../ads/talky-viral-bottom.png";
 import bottom2 from "../ads/truprops-video-bottom.png";
 
 type Props = {
+  // ✅ Pass all news data here, not only viral-filtered data
   viral: NewsPostPayload[];
   activeCategory: string;
   onView: (id: number) => void;
@@ -41,6 +42,24 @@ function formatCategoryLabel(value: string) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function isViralCategory(category: string) {
+  return category.trim().toLowerCase() === "viral";
+}
+
+function getSessionViews(postId: number, fallbackViews: number) {
+  try {
+    const raw = sessionStorage.getItem("news_views");
+
+    if (!raw) return fallbackViews;
+
+    const viewMap = JSON.parse(raw) as Record<string, number>;
+
+    return viewMap[String(postId)] ?? fallbackViews;
+  } catch {
+    return fallbackViews;
+  }
 }
 
 function ViralAd({ ads, label, size }: ViralAdProps) {
@@ -110,7 +129,32 @@ export default function ViralHomePage({
 }: Props) {
   const navigate = useNavigate();
 
-  if (viral.length === 0) {
+  /*
+    ✅ Logic:
+    1. Check if category === "Viral" data exists.
+    2. If yes, show only Viral category data.
+    3. If no, show top viewed data.
+    4. UI/CSS unchanged.
+  */
+  const displayPosts = useMemo(() => {
+    const postsWithLatestViews = viral.map((item) => ({
+      ...item,
+      views: getSessionViews(item.id, item.views || 0),
+    }));
+
+    const viralCategoryPosts = postsWithLatestViews.filter((item) =>
+      isViralCategory(item.category)
+    );
+
+    const source =
+      viralCategoryPosts.length > 0 ? viralCategoryPosts : postsWithLatestViews;
+
+    return [...source]
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 10);
+  }, [viral]);
+
+  if (displayPosts.length === 0) {
     return (
       <section className="mt-6">
         <div className="rounded-xl border border-border bg-card p-10 text-center shadow-sm">
@@ -138,7 +182,7 @@ export default function ViralHomePage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[65%_30%]">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {viral.map((item, index) => (
+          {displayPosts.map((item, index) => (
             <article
               key={item.id}
               onClick={() => {
@@ -181,6 +225,7 @@ export default function ViralHomePage({
                   onClick={(event) => event.stopPropagation()}
                 >
                   <NewsButton
+                    postId={item.id}
                     name={item.author.name}
                     time={getTimeAgo(item.createdAt)}
                     logo={item.author.avatar || logo}
@@ -188,6 +233,8 @@ export default function ViralHomePage({
                     initialLikedCount={item.likes}
                     initialCommentCount={item.comments.length}
                     initialShareCount={item.shares}
+                    initialComments={item.comments}
+                    showCommentList={false}
                     shareTitle={item.title}
                     shareUrl={`${window.location.origin}/news/${item.id}`}
                     onLike={(liked) => console.log(liked)}

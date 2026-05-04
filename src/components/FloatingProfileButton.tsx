@@ -1,86 +1,57 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, LogOut, Pencil, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Camera, LogOut, UserRound } from "lucide-react";
 
-import {
-  getAuthUser,
-  getProfileByPhone,
-  logoutUser,
-  saveUserProfile,
-  type UserProfile,
-  type UserRole,
-} from "@/utils/authStorage";
-
-function getRoleLabel(role?: UserRole) {
-  const roleMap: Record<UserRole, string> = {
-    admin: "Admin",
-    reportor: "Reportor",
-    contributor: "Contributor",
-    guest: "Guest",
-  };
-
-  if (!role) return "Guest";
-
-  return roleMap[role];
-}
-
-function getProfileFallback(phone: string): UserProfile {
-  const now = new Date().toISOString();
-
-  return {
-    phone,
-    profileImage: "",
-    name: "User",
-    role: "guest",
-    location: "Tenkasi",
-    language: "en",
-    profileCompleted: false,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
+import { getAuthUser, getProfileByPhone, logoutUser, saveUserProfile } from "@/utils/authStorage";
+import { getUserLogo } from "@/helper/getUserLogo";
 
 export default function FloatingProfileButton() {
   const navigate = useNavigate();
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const authUser = getAuthUser();
+  const profile = authUser?.phone ? getProfileByPhone(authUser.phone) : null;
 
   const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [logo, setLogo] = useState((profile as any)?.profileImage || (profile as any)?.logo || "");
+
+  const userName = profile?.name || "User";
+  const userRole = (profile as any)?.role || "Guest";
 
   useEffect(() => {
-    const authUser = getAuthUser();
+    function handleOutsideClick(event: MouseEvent) {
+      if (!dropdownRef.current) return;
 
-    if (!authUser?.phone) {
-      setProfile(null);
-      return;
+      if (!dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
     }
 
-    const existingProfile = getProfileByPhone(authUser.phone);
+    document.addEventListener("mousedown", handleOutsideClick);
 
-    setProfile(existingProfile ?? getProfileFallback(authUser.phone));
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
   }, []);
 
   function handleChangeImage(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
-    if (!file || !profile) return;
-
-    if (!file.type.startsWith("image/")) {
-      return;
-    }
+    if (!file || !authUser?.phone || !profile) return;
 
     const reader = new FileReader();
 
-    reader.onload = () => {
-      const profileImage = String(reader.result);
+    reader.onloadend = () => {
+      const imageUrl = String(reader.result);
 
-      const updatedProfile: UserProfile = {
-        ...profile,
-        profileImage,
+      setLogo(imageUrl);
+
+      saveUserProfile({
+        ...(profile as any),
+        profileImage: imageUrl,
+        logo: imageUrl,
         updatedAt: new Date().toISOString(),
-      };
-
-      setProfile(updatedProfile);
-      saveUserProfile(updatedProfile);
+      });
     };
 
     reader.readAsDataURL(file);
@@ -88,64 +59,60 @@ export default function FloatingProfileButton() {
 
   function handleLogout() {
     logoutUser();
-    setOpen(false);
     navigate("/login");
   }
 
-  if (!profile) {
-    return null;
-  }
-
   return (
-    <div className="fixed right-4 top-4 z-50">
+    <div ref={dropdownRef} className="fixed right-4 top-4 z-[99999]">
+      {/* PROFILE BUTTON */}
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-lg shadow-slate-200/70 transition hover:scale-105"
+        onClick={() => setOpen((prev) => !prev)}
+        className="h-11 w-11 overflow-hidden rounded-full border-2 border-white bg-white shadow-lg ring-2 ring-black/10"
+        aria-label="Open profile menu"
       >
-        {profile.profileImage ? (
-          <img
-            src={profile.profileImage}
-            alt={profile.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <UserRound className="h-6 w-6 text-slate-500" />
-        )}
+        <img
+          src={getUserLogo(logo)}
+          alt="profile"
+          className="h-full w-full object-cover"
+        />
       </button>
 
+      {/* DROPDOWN */}
       {open && (
-        <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/80">
-          <div className="bg-[#0f2747] px-4 py-5 text-white">
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/15">
-                {profile.profileImage ? (
-                  <img
-                    src={profile.profileImage}
-                    alt={profile.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <UserRound className="h-7 w-7 text-white/70" />
-                )}
-              </div>
+        <div className="fixed right-4 top-16 z-[99999] w-[320px] overflow-hidden rounded-[32px] border border-white/30 bg-[#10294a] text-white shadow-2xl">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            aria-label="Close profile menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black">
-                  {profile.name || "User"}
-                </p>
+          <div className="flex items-center gap-4 p-6">
+            <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-white/40 bg-white">
+              <img
+                src={getUserLogo(logo)}
+                alt={userName}
+                className="h-full w-full object-cover"
+              />
+            </div>
 
-                <p className="mt-1 w-fit rounded-full bg-[#ef4b2b] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
-                  {getRoleLabel(profile.role)}
-                </p>
-              </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-xl font-extrabold">{userName}</h3>
+
+              <span className="mt-2 inline-flex rounded-full bg-[#ef4b2f] px-4 py-1 text-xs font-extrabold uppercase tracking-wide text-white">
+                {userRole}
+              </span>
             </div>
           </div>
 
-          <div className="space-y-2 p-3">
-            <label className="flex cursor-pointer items-center gap-2 rounded-2xl px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 hover:text-[#ef4b2b]">
-              <Camera className="h-4 w-4" />
+          <div className="space-y-1 bg-white px-6 py-5 text-[#18212f]">
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition hover:bg-slate-100">
+              <Camera className="h-5 w-5 text-[#10294a]" />
               Change Photo
+
               <input
                 type="file"
                 accept="image/*"
@@ -160,18 +127,18 @@ export default function FloatingProfileButton() {
                 setOpen(false);
                 navigate("/profile-settings");
               }}
-              className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-50 hover:text-[#ef4b2b]"
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold transition hover:bg-slate-100"
             >
-              <UserRound className="h-4 w-4" />
+              <Pencil className="h-5 w-5 text-[#10294a]" />
               Edit Profile
             </button>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm font-bold text-red-600 transition hover:bg-red-50"
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-extrabold text-red-600 transition hover:bg-red-50"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" />
               Logout
             </button>
           </div>

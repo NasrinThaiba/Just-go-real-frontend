@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import NewsMeta from "./NewsMeta";
 import NewsActions from "./NewsActions";
 
+import type { PostComment } from "@/types/news";
+import { getCurrentAuthor } from "@/helper/getCurrentAuthor";
+import { getStoredComments, savePostComment } from "@/utils/commentStorage";
+
 type NewsButtonProps = {
+  postId?: number;
+
   name: string;
   time: string;
   logo?: string;
@@ -17,11 +24,55 @@ type NewsButtonProps = {
   initialCommentCount?: number;
   initialShareCount?: number;
 
+  initialComments?: PostComment[];
+
+  /**
+   * true  = show full comment list
+   * false = only show input + post button
+   */
+  showCommentList?: boolean;
+
   shareUrl?: string;
   shareTitle?: string;
 };
 
+function mergeComments(
+  initialComments: PostComment[],
+  storedComments: PostComment[]
+) {
+  const map = new Map<number, PostComment>();
+
+  initialComments.forEach((comment) => {
+    map.set(comment.id, comment);
+  });
+
+  storedComments.forEach((comment) => {
+    map.set(comment.id, comment);
+  });
+
+  return Array.from(map.values()).sort((a, b) => a.id - b.id);
+}
+
+function formatCommentTime(createdAt?: string) {
+  if (!createdAt) return "Now";
+
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Now";
+  }
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function NewsButton({
+  postId,
+
   name,
   time,
   logo,
@@ -35,60 +86,87 @@ export default function NewsButton({
   initialCommentCount = 0,
   initialShareCount = 0,
 
+  initialComments = [],
+
+  showCommentList = false,
+
   shareUrl = window.location.href,
   shareTitle = "Check this news",
 }: NewsButtonProps) {
-
-  /* =========================
-      ❤️ LIKE
-  ========================== */
+  const loggedInAuthor = useMemo(() => getCurrentAuthor(), []);
+  const loggedInUserName = loggedInAuthor.name || "User";
 
   const [liked, setLiked] = useState(false);
   const [likedCount, setLikedCount] = useState(initialLikedCount);
 
-  const handleLikeToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-
-    const next = !liked;
-    setLiked(next);
-    setLikedCount((prev) =>
-      next ? prev + 1 : Math.max(prev - 1, 0)
-    );
-    onLike?.(next);
-  };
-
-  /* =========================
-      💬 COMMENT
-  ========================== */
-
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [commentCount, setCommentCount] = useState(initialCommentCount);
 
-  const handleCommentClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowCommentBox((prev) => !prev);
-  };
+  const [comments, setComments] = useState<PostComment[]>(() => {
+    if (!postId) return initialComments;
 
-  const handleCommentSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-
-    if (!commentText.trim()) return;
-
-    setCommentCount((prev) => prev + 1);
-    onComment?.(commentText);
-    setCommentText("");
-    setShowCommentBox(false);
-  };
-
-  /* =========================
-      🔗 SHARE
-  ========================== */
+    return mergeComments(initialComments, getStoredComments(postId));
+  });
 
   const [shareCount, setShareCount] = useState(initialShareCount);
 
-  const handleShareClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const commentCount = useMemo(() => {
+    return Math.max(initialCommentCount, comments.length);
+  }, [comments.length, initialCommentCount]);
+
+  useEffect(() => {
+    if (!postId) return;
+
+    setComments(mergeComments(initialComments, getStoredComments(postId)));
+  }, [postId, initialComments]);
+
+  function handleLikeToggle(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
+    const next = !liked;
+
+    setLiked(next);
+    setLikedCount((prev) => (next ? prev + 1 : Math.max(prev - 1, 0)));
+
+    onLike?.(next);
+  }
+
+  function handleCommentClick(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
+    setShowCommentBox((prev) => !prev);
+  }
+
+  function handleCommentSubmit(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
+    const text = commentText.trim();
+
+    if (!text) return;
+
+    const newComment: PostComment = {
+      id: Date.now(),
+      userName: loggedInUserName,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedComments = [...comments, newComment];
+
+    setComments(updatedComments);
+
+    if (postId) {
+      savePostComment(postId, newComment);
+    }
+
+    onComment?.(text);
+
+    setCommentText("");
+    setShowCommentBox(false);
+  }
+
+  async function handleShareClick(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
 
     try {
       if (navigator.share) {
@@ -101,24 +179,22 @@ export default function NewsButton({
       }
 
       setShareCount((prev) => prev + 1);
+
       onShare?.();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     }
-  };
+  }
 
   return (
-    <div className="w-full pt-2 pb-2">
-
+    <div className="w-full pb-2 pt-2">
       <NewsMeta name={name} logo={logo} />
 
       <div className="mt-2 flex items-center justify-between">
-
-        {/* ⏱ + 👁 */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{time}</span>
           <span>•</span>
-          <span>{views} views</span> {/* ✅ DIRECT FROM PROPS */}
+          <span>{views} views</span>
         </div>
 
         <NewsActions
@@ -132,30 +208,70 @@ export default function NewsButton({
         />
       </div>
 
-      {/* COMMENT BOX */}
       {showCommentBox && (
-        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2">
-
+        <div
+          className="mt-3 space-y-3"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-start gap-2">
             <textarea
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Write a comment..."
+              onChange={(event) => setCommentText(event.target.value)}
+              placeholder={`Comment as ${loggedInUserName}...`}
               rows={1}
-              className="flex-1 resize-none rounded-md border px-3 py-2 text-sm outline-none focus:border-primary"
+              className="min-h-9 flex-1 resize-none rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
 
             <button
+              type="button"
               onClick={handleCommentSubmit}
-              className="h-7 rounded-md bg-primary px-3 text-sm text-white"
+              disabled={!commentText.trim()}
+              className="h-9 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
               Post
             </button>
-
           </div>
+
+          {showCommentList && (
+            <div className="rounded-lg border border-border bg-muted/40">
+              <div className="border-b border-border px-3 py-2">
+                <p className="text-xs font-semibold text-foreground">
+                  Comments ({commentCount})
+                </p>
+              </div>
+
+              {comments.length > 0 ? (
+                <div className="max-h-64 space-y-2 overflow-y-auto p-3">
+                  {comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="rounded-lg bg-card px-3 py-2 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {comment.userName || "User"}
+                        </p>
+
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {formatCommentTime(comment.createdAt)}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 whitespace-pre-line text-sm leading-5 text-muted-foreground">
+                        {comment.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 text-sm text-muted-foreground">
+                  No comments yet. Be the first to comment.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
-
     </div>
   );
 }
