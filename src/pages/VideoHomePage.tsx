@@ -1,37 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SyntheticEvent } from "react";
-import { X } from "lucide-react";
-
 import FloatingAddButton from "@/components/FloatingButton";
 import NewsButton from "@/features/NewsButton";
+import ImageAd from "@/components/ImageAd";
 import logo from "@/assets/logo.png";
 import { getTimeAgo } from "@/helper/getTimeAgo";
 import { type VideoPostPayload } from "@/types/news";
-
-import Top1 from "../ads/consdroid-video-top.png";
-import Top2 from "../ads/isha-video-top.png";
-import Top3 from "../ads/knowtran-video-top.png";
-import Top4 from "../ads/talky-video-top.png";
-import Top5 from "../ads/truprops-video-top.png";
-
-import bottom5 from "../ads/consdroid-video-bottom.png";
-import bottom3 from "../ads/isha-video-bottom.png";
-import bottom4 from "../ads/knowtran-video-bottom.png";
-import bottom2 from "../ads/talky-video-bottom.png";
-import bottom1 from "../ads/truprops-video-bottom.png";
 
 type Props = {
   videos: VideoPostPayload[];
 };
 
-type VideoAdProps = {
-  ads: string[];
-  label: string;
-  size: "large" | "medium";
-};
+const topAds = [
+  "/ads/consdroid-video-top.webp",
+  "/ads/isha-video-top.webp",
+  "/ads/knowtran-video-top.webp",
+  "/ads/talky-video-top.webp",
+  "/ads/truprops-video-top.webp"
+];
 
-const topAds = [Top1, Top2, Top3, Top4, Top5];
-const bottomAds = [bottom1, bottom2, bottom3, bottom4, bottom5];
+const bottomAds = [
+  "/ads/knowtran-video-bottom.webp",
+  "/ads/truprops-video-bottom.webp",
+  "/ads/consdroid-video-bottom.webp",
+  "/ads/isha-video-bottom.webp",
+  "/ads/talky-video-bottom.webp",
+];
 
 const LOCAL_STORAGE_FEED_KEYS = [
   "jgr_feed_posts",
@@ -137,69 +131,6 @@ function getYoutubeSrc(mediaUrl: string) {
   const separator = mediaUrl.includes("?") ? "&" : "?";
 
   return `${mediaUrl}${separator}enablejsapi=1`;
-}
-
-function VideoAd({ ads, label, size }: VideoAdProps) {
-  const [adIndex, setAdIndex] = useState(0);
-  const [isClosed, setIsClosed] = useState(false);
-
-  useEffect(() => {
-    if (isClosed) return;
-
-    const interval = window.setInterval(() => {
-      setAdIndex((currentIndex) => (currentIndex + 1) % ads.length);
-    }, 10000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [ads.length, isClosed]);
-
-  const currentAd = ads[adIndex];
-  const sizeClass = size === "large" ? "h-[300px]" : "h-[250px]";
-
-  return (
-    <div
-      className={`relative flex w-full items-center justify-center overflow-hidden border bg-gray-100 ${sizeClass}`}
-    >
-      {!isClosed ? (
-        <>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setIsClosed(true);
-            }}
-            className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white shadow-md transition hover:bg-red-600"
-            aria-label="Close advertisement"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
-          <div className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-            Ad
-          </div>
-
-          <a
-            href="#"
-            aria-label={label}
-            className="block h-full w-full"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <img
-              key={currentAd}
-              src={currentAd}
-              alt={label}
-              className="h-full w-full object-cover transition duration-500 hover:scale-105"
-            />
-          </a>
-        </>
-      ) : (
-        <p className="text-sm text-muted-foreground">Advertisement closed</p>
-      )}
-    </div>
-  );
 }
 
 export default function VideoHomePage({ videos }: Props) {
@@ -321,6 +252,8 @@ export default function VideoHomePage({ videos }: Props) {
     return (
       <section className="mt-10 text-center">
         <p className="text-muted-foreground">No videos available</p>
+
+        <FloatingAddButton label="Add Video" route="/create-video" />
       </section>
     );
   }
@@ -359,6 +292,12 @@ export default function VideoHomePage({ videos }: Props) {
 
                 <h3 className="mt-4 text-lg font-semibold">{video.title}</h3>
 
+                {video.description && (
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                    {video.description}
+                  </p>
+                )}
+
                 <div className="mt-3">
                   <NewsButton
                     postId={video.id}
@@ -383,13 +322,14 @@ export default function VideoHomePage({ videos }: Props) {
         </div>
 
         <div className="hidden lg:flex flex-col gap-6 sticky top-24">
-          <VideoAd
+          <ImageAd
             ads={topAds}
             label="Video page top advertisement"
             size="large"
+            priority
           />
 
-          <VideoAd
+          <ImageAd
             ads={bottomAds}
             label="Video page bottom advertisement"
             size="medium"

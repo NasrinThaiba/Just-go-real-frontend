@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { X } from "lucide-react";
-
 import MainLayout from "@/pages/MainLayout";
 import NewsButton from "@/features/NewsButton";
+import ImageAd from "@/components/ImageAd";
 import { DEFAULT_CATEGORY_BY_HEAD, type HeadTab } from "@/pages/Navbar";
-
 import { newsData } from "../data/newsData";
 import logo from "../assets/logo.png";
-
 import { getTimeAgo } from "@/helper/getTimeAgo";
 import { getStoredFeedPosts } from "@/utils/feedStorage";
 import { getCurrentAuthor } from "@/helper/getCurrentAuthor";
@@ -16,91 +13,21 @@ import { getStoredComments, savePostComment } from "@/utils/commentStorage";
 
 import type { NewsPostPayload, PostAuthor, PostComment } from "@/types/news";
 
-import Top1 from "../ads/consdroid-video-top.png";
-import Top2 from "../ads/isha-video-top.png";
-import Top3 from "../ads/knowtran-video-top.png";
-import Top4 from "../ads/talky-video-top.png";
-import Top5 from "../ads/truprops-video-top.png";
+const topAds = [
+  "/ads/consdroid-video-top.webp",
+  "/ads/isha-video-top.webp",
+  "/ads/knowtran-video-top.webp",
+  "/ads/talky-video-top.webp",
+  "/ads/truprops-video-top.webp",
+];
 
-import Bottom5 from "../ads/consdroid-video-bottom.png";
-import Bottom4 from "../ads/isha-video-bottom.png";
-import Bottom2 from "../ads/knowtran-video-bottom.png";
-import Bottom3 from "../ads/talky-video-bottom.png";
-import Bottom1 from "../ads/truprops-video-bottom.png";
-
-type DetailAdProps = {
-  ads: string[];
-  label: string;
-  size: "large" | "medium";
-};
-
-const topAds = [Top1, Top2, Top3, Top4, Top5];
-const bottomAds = [Bottom1, Bottom2, Bottom3, Bottom4, Bottom5];
-
-function DetailAd({ ads, label, size }: DetailAdProps) {
-  const [adIndex, setAdIndex] = useState(0);
-  const [isClosed, setIsClosed] = useState(false);
-
-  useEffect(() => {
-    if (isClosed || ads.length <= 1) return;
-
-    const interval = window.setInterval(() => {
-      setAdIndex((currentIndex) => (currentIndex + 1) % ads.length);
-    }, 10000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [ads.length, isClosed]);
-
-  const currentAd = ads[adIndex];
-  const sizeClass = size === "large" ? "h-[300px]" : "h-[250px]";
-
-  return (
-    <article
-      className={`relative w-full overflow-hidden border border-border bg-card shadow-sm ${sizeClass}`}
-    >
-      {!isClosed ? (
-        <>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setIsClosed(true);
-            }}
-            className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white shadow-md transition hover:bg-red-600"
-            aria-label="Close advertisement"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
-          <div className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-            Ad
-          </div>
-
-          <a
-            href="#"
-            aria-label={label}
-            className="block h-full w-full"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <img
-              key={currentAd}
-              src={currentAd}
-              alt={label}
-              className="h-full w-full object-cover transition duration-500 hover:scale-105"
-            />
-          </a>
-        </>
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xs font-semibold text-slate-400">
-          Advertisement closed
-        </div>
-      )}
-    </article>
-  );
-}
+const bottomAds = [
+  "/ads/truprops-video-bottom.webp",
+  "/ads/knowtran-video-bottom.webp",
+  "/ads/talky-video-bottom.webp",
+  "/ads/isha-video-bottom.webp",
+  "/ads/consdroid-video-bottom.webp",
+];
 
 function formatDescription(text?: string) {
   if (!text) return ["No description available"];
@@ -115,8 +42,8 @@ function formatDescription(text?: string) {
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   const paragraphs: string[] = [];
 
-  for (let i = 0; i < sentences.length; i += 3) {
-    paragraphs.push(sentences.slice(i, i + 3).join(" "));
+  for (let index = 0; index < sentences.length; index += 3) {
+    paragraphs.push(sentences.slice(index, index + 3).join(" "));
   }
 
   return paragraphs;
@@ -154,6 +81,18 @@ function formatCommentTime(createdAt: string) {
   });
 }
 
+function getStoredViewMap() {
+  try {
+    const storedViews = sessionStorage.getItem("news_views");
+
+    if (!storedViews) return {};
+
+    return JSON.parse(storedViews) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
 export default function NewsDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -171,24 +110,20 @@ export default function NewsDetailPage() {
     const postId = Number(id);
 
     const storedPosts = getStoredFeedPosts();
+    const viewMap = getStoredViewMap();
 
-    const storedViews = sessionStorage.getItem("news_views");
-    const viewMap = storedViews
-      ? (JSON.parse(storedViews) as Record<string, number>)
-      : {};
-
-    const allNews = [...storedPosts, ...newsData].map((item) => ({
+    const allPosts = [...storedPosts, ...newsData].map((item) => ({
       ...item,
       views: viewMap[String(item.id)] ?? item.views ?? 0,
     }));
 
-    return allNews.find(
+    return allPosts.find(
       (item): item is NewsPostPayload =>
         item.id === postId && item.type === "news"
     );
   }, [id]);
 
-  const [views, setViews] = useState<number>(0);
+  const [views, setViews] = useState(0);
   const [commentText, setCommentText] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<PostComment[]>([]);
@@ -198,11 +133,7 @@ export default function NewsDetailPage() {
   useEffect(() => {
     if (!newsItem) return;
 
-    const stored = sessionStorage.getItem("news_views");
-    const viewMap = stored
-      ? (JSON.parse(stored) as Record<string, number>)
-      : {};
-
+    const viewMap = getStoredViewMap();
     const initialViews = viewMap[String(newsItem.id)] ?? newsItem.views ?? 0;
 
     setViews(initialViews);
@@ -216,15 +147,27 @@ export default function NewsDetailPage() {
     setComments(mergeComments(newsItem.comments ?? [], storedComments));
   }, [newsItem]);
 
-  function handleOpenComments() {
-    setShowComments(true);
-
+  function scrollToComments() {
     requestAnimationFrame(() => {
       commentsRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     });
+  }
+
+  function refreshCommentsFromStorage() {
+    if (!newsItem) return;
+
+    const storedComments = getStoredComments(newsItem.id);
+
+    setComments(mergeComments(newsItem.comments ?? [], storedComments));
+  }
+
+  function handleNewsButtonComment() {
+    refreshCommentsFromStorage();
+    setShowComments(true);
+    scrollToComments();
   }
 
   function handleAddComment() {
@@ -291,7 +234,7 @@ export default function NewsDetailPage() {
       <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <article className="min-w-0">
-            <h1 className="text-xl font-black leading-tight text-foreground md:text-3xl">
+            <h1 className="text-2xl font-black leading-tight text-foreground md:text-3xl">
               {newsItem.title}
             </h1>
 
@@ -300,7 +243,9 @@ export default function NewsDetailPage() {
                 <img
                   src={newsItem.mediaUrl}
                   alt={newsItem.title}
-                  className="max-h-[350px] w-full object-cover"
+                  className="max-h-[420px] w-full object-cover"
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
             )}
@@ -316,10 +261,11 @@ export default function NewsDetailPage() {
                 initialCommentCount={comments.length}
                 initialShareCount={newsItem.shares}
                 initialComments={comments}
+                showCommentList={false}
                 shareTitle={newsItem.title}
                 shareUrl={`${window.location.origin}/news/${newsItem.id}`}
                 onLike={(liked) => console.log(liked)}
-                onComment={handleOpenComments}
+                onComment={handleNewsButtonComment}
                 onShare={() => console.log("shared")}
               />
             </div>
@@ -329,7 +275,7 @@ export default function NewsDetailPage() {
                 (paragraph, index) => (
                   <p
                     key={index}
-                    className="whitespace-pre-line text-base leading-8 text-muted-foreground md:text-md"
+                    className="whitespace-pre-line text-base leading-6 text-muted-foreground md:text-md"
                   >
                     {paragraph.trim()}
                   </p>
@@ -412,13 +358,14 @@ export default function NewsDetailPage() {
 
           <aside className="hidden lg:block">
             <div className="sticky top-24 flex flex-col gap-6">
-              <DetailAd
+              <ImageAd
                 ads={topAds}
                 label="News detail top advertisement"
                 size="large"
+                priority
               />
 
-              <DetailAd
+              <ImageAd
                 ads={bottomAds}
                 label="News detail bottom advertisement"
                 size="medium"

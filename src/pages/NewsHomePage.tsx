@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import BreakingCarousel, { getBreakingNews} from "@/components/BreakingCarousel";
+import BreakingCarousel from "@/components/BreakingCarousel";
 import FloatingAddButton from "@/components/FloatingButton";
 
 import Ads from "../features/Ads";
@@ -23,8 +23,13 @@ const CATEGORY_MAP: Record<string, { en: string; ta: string }> = {
   Local: { en: "Local", ta: "உள்ளூர்" },
   Education: { en: "Education", ta: "கல்வி" },
   Crime: { en: "Crime", ta: "குற்றம்" },
+
+  // Top-level categories
+  Viral: { en: "Viral", ta: "வைரல்" },
   "Breaking News": { en: "Breaking News", ta: "உடனடி செய்திகள்" },
 };
+
+const TOP_LEVEL_CATEGORIES = ["Breaking News", "Viral"];
 
 const LOCAL_STORAGE_FEED_KEYS = [
   "jgr_feed_posts",
@@ -83,7 +88,7 @@ function getLocalStoragePosts(): FeedItem[] {
         posts.push(...parsed.filter(isFeedItem));
       }
     } catch {
-      
+      // Ignore invalid localStorage data
     }
   }
 
@@ -104,11 +109,22 @@ function mergeFeedPosts(seedPosts: FeedItem[], localPosts: FeedItem[]) {
   return Array.from(map.values()).sort((a, b) => b.id - a.id);
 }
 
+function getBreakingNews(feed: FeedItem[], language: "en" | "ta") {
+  let filtered = feed.filter(
+    (item) => item.category === "Breaking News" && item.language === language
+  );
+
+  if (filtered.length === 0) {
+    filtered = feed.filter((item) => item.category === "Breaking News");
+  }
+
+  return filtered.slice(0, 5);
+}
+
 export default function NewsHomePage({
   news,
   selectedLocation,
   language,
-  onView,
 }: Props) {
   const navigate = useNavigate();
 
@@ -149,11 +165,19 @@ export default function NewsHomePage({
   const hasBreakingNews = breakingNews.length > 0;
 
   const filteredNews = useMemo<NewsPostPayload[]>(() => {
-    return locationFilteredFeed.filter(
+    const newsOnly = locationFilteredFeed.filter(
       (item): item is NewsPostPayload =>
-        item.type === "news" && item.mediaType === "image"
+        item.type === "news" &&
+        item.mediaType === "image" &&
+        !TOP_LEVEL_CATEGORIES.includes(item.category)
     );
-  }, [locationFilteredFeed]);
+
+    const languageMatchedNews = newsOnly.filter(
+      (item) => item.language === language
+    );
+
+    return languageMatchedNews.length > 0 ? languageMatchedNews : newsOnly;
+  }, [locationFilteredFeed, language]);
 
   const newsByCategory = useMemo(() => {
     const grouped: Record<string, NewsPostPayload[]> = {};
@@ -183,7 +207,7 @@ export default function NewsHomePage({
 
   return (
     <>
-      {/* BREAKING NEWS SECTION */}
+      {/* BREAKING NEWS TOP SECTION */}
       {hasBreakingNews && (
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_300px]">
           <section>
@@ -228,7 +252,7 @@ export default function NewsHomePage({
         </div>
       )}
 
-      {/* CATEGORY NEWS SECTIONS */}
+      {/* NORMAL CATEGORY SECTIONS */}
       {categories.map((category) => {
         const categoryNews = newsByCategory[category];
 
@@ -281,12 +305,11 @@ export default function NewsHomePage({
               <LeadNews
                 item={lead}
                 onClick={() => {
-                  onView(lead.id);
                   navigate(`/news/${lead.id}`);
                 }}
               />
 
-              {/* RIGHT SIDE FIXED SLOTS */}
+              {/* RIGHT SIDE: SLOT 1 NEWS, SLOT 2 AD, SLOT 3 NEWS, SLOT 4 NEWS */}
               <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
                 {sideItems.map((item, index) => {
                   if (item.kind === "ad") {
@@ -295,7 +318,7 @@ export default function NewsHomePage({
                         key={`ad-${category}-${index}`}
                         className="self-start"
                       >
-                        <Ads />
+                        <Ads category={category} />
                       </div>
                     );
                   }
@@ -314,7 +337,6 @@ export default function NewsHomePage({
                       <NormalNews
                         item={item.data}
                         onClick={() => {
-                          onView(item.data.id);
                           navigate(`/news/${item.data.id}`);
                         }}
                       />

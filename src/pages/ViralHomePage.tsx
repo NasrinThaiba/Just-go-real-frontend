@@ -1,39 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
 
 import NewsButton from "@/features/NewsButton";
+import ImageAd from "@/components/ImageAd";
+
 import logo from "@/assets/logo.png";
 import type { NewsPostPayload } from "@/types/news";
 import { getTimeAgo } from "@/helper/getTimeAgo";
 
-import Top1 from "../ads/consdroid-viral-top.png";
-import Top2 from "../ads/isha-viral-top.png";
-import Top3 from "../ads/knowtran-viral-top.png";
-import Top4 from "../ads/talky-viral-top.png";
-import Top5 from "../ads/truprops-video-top.png";
-
-import bottom5 from "../ads/consdroid-viral-bottom.png";
-import bottom4 from "../ads/isha-viral-bottom.png";
-import bottom3 from "../ads/knowtran-viral-bottom.png";
-import bottom1 from "../ads/talky-viral-bottom.png";
-import bottom2 from "../ads/truprops-video-bottom.png";
-
 type Props = {
-  // ✅ Pass all news data here, not only viral-filtered data
   viral: NewsPostPayload[];
   activeCategory: string;
   onView: (id: number) => void;
 };
 
-type ViralAdProps = {
-  ads: string[];
-  label: string;
-  size: "large" | "medium";
-};
-
-const topAds = [Top1, Top2, Top3, Top4, Top5];
-const bottomAds = [bottom1, bottom2, bottom3, bottom4, bottom5];
+const topAds = [
+  "/ads/consdroid-viral-top.webp",
+  "/ads/isha-viral-top.webp",
+  "/ads/knowtran-viral-top.webp",
+  "/ads/talky-viral-top.webp",
+  "/ads/truprops-video-top.webp"
+];
+const bottomAds = [
+  "/ads/truprops-video-bottom.webp",
+  "/ads/consdroid-viral-bottom.webp",
+  "/ads/talky-viral-bottom.webp",
+  "/ads/knowtran-viral-bottom.webp",
+  "/ads/isha-viral-bottom.webp",
+];
 
 function formatCategoryLabel(value: string) {
   if (value === "Home" || value === "All") return "Viral News";
@@ -62,66 +56,6 @@ function getSessionViews(postId: number, fallbackViews: number) {
   }
 }
 
-function ViralAd({ ads, label, size }: ViralAdProps) {
-  const [adIndex, setAdIndex] = useState(0);
-  const [isClosed, setIsClosed] = useState(false);
-
-  useEffect(() => {
-    if (isClosed) return;
-
-    const interval = window.setInterval(() => {
-      setAdIndex((currentIndex) => (currentIndex + 1) % ads.length);
-    }, 10000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [ads.length, isClosed]);
-
-  const currentAd = ads[adIndex];
-  const sizeClass = size === "large" ? "h-[300px]" : "h-[250px]";
-
-  return (
-    <article
-      className={`relative w-full overflow-hidden border border-border bg-card shadow-sm ${sizeClass}`}
-    >
-      {!isClosed ? (
-        <>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setIsClosed(true);
-            }}
-            className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white shadow-md transition hover:bg-red-600"
-            aria-label="Close advertisement"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
-          <div className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-            Ad
-          </div>
-
-          <a href="#" aria-label={label} className="block h-full w-full">
-            <img
-              key={currentAd}
-              src={currentAd}
-              alt={label}
-              className="h-full w-full object-cover transition duration-500 hover:scale-105"
-            />
-          </a>
-        </>
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xs font-semibold text-slate-400">
-          Advertisement closed
-        </div>
-      )}
-    </article>
-  );
-}
-
 export default function ViralHomePage({
   viral,
   activeCategory,
@@ -129,13 +63,6 @@ export default function ViralHomePage({
 }: Props) {
   const navigate = useNavigate();
 
-  /*
-    ✅ Logic:
-    1. Check if category === "Viral" data exists.
-    2. If yes, show only Viral category data.
-    3. If no, show top viewed data.
-    4. UI/CSS unchanged.
-  */
   const displayPosts = useMemo(() => {
     const postsWithLatestViews = viral.map((item) => ({
       ...item,
@@ -170,7 +97,7 @@ export default function ViralHomePage({
 
   return (
     <section className="mt-6">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="ml-3 mb-5 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-foreground">
             {formatCategoryLabel(activeCategory)}
@@ -180,8 +107,9 @@ export default function ViralHomePage({
         <span className="text-sm text-muted-foreground">Viral Home</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[65%_30%]">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 lg:grid-cols-[65%_30%] gap-10">
+        {/* VIRAL CONTENT */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 pl-5">
           {displayPosts.map((item, index) => (
             <article
               key={item.id}
@@ -197,6 +125,8 @@ export default function ViralHomePage({
                     src={item.mediaUrl}
                     alt={item.title}
                     className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
@@ -250,13 +180,14 @@ export default function ViralHomePage({
         {/* VIRAL PAGE ADS */}
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-6">
-            <ViralAd
+            <ImageAd
               ads={topAds}
               label="Viral page top advertisement"
               size="large"
+              priority
             />
 
-            <ViralAd
+            <ImageAd
               ads={bottomAds}
               label="Viral page bottom advertisement"
               size="medium"
