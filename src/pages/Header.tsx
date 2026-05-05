@@ -1,36 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import Navbar, { DEFAULT_CATEGORY_BY_HEAD, type HeadTab } from "./Navbar";
 import LocationSelector from "@/components/location";
 import Name from "../assets/Name.png";
-
-import {
-  getAuthUser,
-  getProfileByPhone,
-  saveUserProfile,
-  type UserProfile,
-} from "@/utils/authStorage";
+import { getAuthUser, getProfileByPhone, saveUserProfile, type UserProfile } from "@/utils/authStorage";
 
 type Props = {
   language: "en" | "ta";
   onLanguageChange: (lang: "en" | "ta") => void;
-
   activeHead: HeadTab;
   activeCategory: string;
-
   selectedLocation: string;
   onLocationChange: (location: string) => void;
-
   onHeadChange: (tab: HeadTab) => void;
   onCategoryChange: (category: string) => void;
 };
 
 function getLoggedInProfile(): UserProfile | null {
   const authUser = getAuthUser();
-
   if (!authUser?.phone) return null;
-
   return getProfileByPhone(authUser.phone);
 }
 
@@ -61,7 +49,6 @@ export default function Header({
   onCategoryChange,
 }: Props): React.ReactElement {
   const { t, i18n } = useTranslation();
-
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const languageRef = useRef<HTMLDivElement | null>(null);
 
@@ -133,9 +120,8 @@ export default function Header({
     language === "ta" ? t("common.tamil") : t("common.english");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background">
-      {/* TOP SECTION */}
-      <div className="relative z-20 border-b border-border">
+    <header className="relative z-20 border-b border-border bg-background">
+      <div className="relative z-50 border-b border-border">
         <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 py-4 md:px-6">
           {/* LEFT EMPTY SPACE */}
           <div />

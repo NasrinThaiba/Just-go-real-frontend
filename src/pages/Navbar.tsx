@@ -7,7 +7,7 @@ type Props = {
   activeHead: HeadTab;
   activeCategory: string;
   onCategoryChange: (category: string) => void;
-  language: "en" | "ta"; // ✅ USE THIS
+  language: "ta" | "en";
 };
 
 const NAV_KEYS = {
@@ -56,70 +56,92 @@ export default function Navbar({
   activeHead,
   activeCategory,
   onCategoryChange,
-  language, // ✅ RECEIVE HERE
+  language,
 }: Props): React.ReactElement {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const config = NAV_KEYS[activeHead];
 
-  // ✅ USE language instead of i18n.language
   const moreLabel = language === "ta" ? "மேலும்" : "More";
 
   useEffect(() => {
-    setOpen(false);
-  }, [activeHead]);
+    if (i18n.language !== language) {
+      i18n.changeLanguage(language);
+    }
+  }, [i18n, language]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    setOpen(false);
+  }, [activeHead, activeCategory]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setOpen(false);
       }
-    };
+    }
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
+  const buttonTextClass =
+    language === "ta"
+      ? "text-[12px] leading-none md:text-[13px]"
+      : "text-[13px] leading-none md:text-sm";
+
   return (
-    <nav className="relative z-10 mx-auto max-w-6xl overflow-visible bg-background border-b border-border px-4 py-2 md:px-6">
-      <div className="flex w-full flex-wrap items-center justify-center gap-1 text-sm font-medium md:flex-nowrap">
+    <nav className="relative z-40 border-b border-border bg-background">
+      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-2 py-2 md:px-6">
+        {/* MAIN CATEGORY SCROLL AREA */}
+        <div></div>
+        <div className="flex justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-w-max items-center gap-2">
+            {config.main.map((key) => {
+              const isActive = activeCategory === key;
+              const label = t(`navbar.${activeHead}.main.${key}`);
 
-        {config.main.map((key) => {
-          const isActive = activeCategory === key;
-
-          // ✅ FORCE re-render on language change
-          const label = t(`navbar.${activeHead}.main.${key}`);
-
-          return (
-            <button
-              key={`${key}-${language}`} // ✅ IMPORTANT FIX
-              onClick={() => {
-                onCategoryChange(key);
-                setOpen(false);
-              }}
-              className={`rounded-md px-3 py-2 transition-all duration-200 ${
-                isActive
-                  ? "bg-accent text-accent-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+              return (
+                <button
+                  key={`${activeHead}-${key}-${language}`}
+                  type="button"
+                  onClick={() => {
+                    onCategoryChange(key);
+                    setOpen(false);
+                  }}
+                  title={label}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3 py-2 font-semibold transition${
+                    buttonTextClass
+                  } ${
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* MORE DROPDOWN */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="flex justify-end" ref={dropdownRef}>
           <button
+            type="button"
             onClick={() => setOpen((prev) => !prev)}
-            className={`rounded-md px-3 py-2 font-semibold ${
+            className={`rounded-full px-3 py-2 font-semibold ${
+              buttonTextClass
+            } ${
               open
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -129,7 +151,7 @@ export default function Navbar({
           </button>
 
           {open && (
-            <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-md border border-border bg-popover p-2 shadow-md">
+            <div className="absolute right-0 top-full z-[9999] mt-2 w-72 rounded-xl border border-border bg-popover p-2 shadow-xl">
               <div className="flex flex-col gap-1">
                 {config.more.map((key) => {
                   const isActive = activeCategory === key;
@@ -137,14 +159,18 @@ export default function Navbar({
 
                   return (
                     <button
-                      key={`${key}-${language}`} // ✅ IMPORTANT FIX
+                      key={`${activeHead}-${key}-${language}`}
+                      type="button"
                       onClick={() => {
                         onCategoryChange(key);
                         setOpen(false);
                       }}
-                      className={`rounded-md px-3 py-2 text-left text-sm ${
+                      title={label}
+                      className={`whitespace-nowrap rounded-lg px-3 py-2 text-left font-semibold transition ${
+                        language === "ta" ? "text-[13px]" : "text-sm"
+                      } ${
                         isActive
-                          ? "bg-accent text-accent-foreground font-semibold"
+                          ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -156,7 +182,6 @@ export default function Navbar({
             </div>
           )}
         </div>
-
       </div>
     </nav>
   );

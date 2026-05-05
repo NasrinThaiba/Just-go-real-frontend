@@ -13,7 +13,10 @@ export default function HomePage() {
   const [activeHead, setActiveHead] = useState<HeadTab>("news");
   const [activeCategory, setActiveCategory] = useState(DEFAULT_CATEGORY_BY_HEAD.news);
   const [selectedLocation, setSelectedLocation] = useState("All");
-  const [language, setLanguage] = useState<"en" | "ta">("en");
+  const [language, setLanguage] = useState<"en" | "ta">(() => {
+  const saved = localStorage.getItem("app_language");
+  return saved === "en" || saved === "ta" ? saved : "ta";
+});
 
   // ✅ INIT FROM SESSION STORAGE
   const [newsList, setNewsList] = useState<FeedItem[]>(() => {
@@ -144,6 +147,7 @@ export default function HomePage() {
     viral={viral}
     activeCategory={activeCategory}
     onView={increaseView}
+    language={language}
   />
 )}
       </MainLayout>

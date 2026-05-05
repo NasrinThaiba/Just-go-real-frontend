@@ -221,13 +221,13 @@ export default function CreateVideo() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
         {/* LEFT SIDE */}
         <section className="space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="border border-border bg-card p-5 shadow-sm">
             <h1 className="text-xl font-bold text-card-foreground">
               Create Video Post
             </h1>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border border-border bg-card shadow-sm">
             {/* AUTHOR ROW */}
             <div className="flex items-center gap-3 border-b border-border p-5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-primary-foreground">
@@ -523,7 +523,7 @@ export default function CreateVideo() {
 
         {/* RIGHT SIDE LIVE PREVIEW */}
         <aside className="lg:sticky lg:top-6 lg:h-fit">
-          <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border border-border bg-card shadow-sm">
             <div className="flex items-center gap-2 border-b border-border p-4">
               <Eye className="h-4 w-4 text-accent" />
               <h3 className="font-semibold text-card-foreground">

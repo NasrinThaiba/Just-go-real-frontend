@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { useTranslation } from "react-i18next";
 import NewsButton from "@/features/NewsButton";
 import ImageAd from "@/components/ImageAd";
-
 import logo from "@/assets/logo.png";
 import type { NewsPostPayload } from "@/types/news";
 import { getTimeAgo } from "@/helper/getTimeAgo";
@@ -12,6 +11,7 @@ type Props = {
   viral: NewsPostPayload[];
   activeCategory: string;
   onView: (id: number) => void;
+  language: "en" | "ta";
 };
 
 const topAds = [
@@ -28,15 +28,6 @@ const bottomAds = [
   "/ads/knowtran-viral-bottom.webp",
   "/ads/isha-viral-bottom.webp",
 ];
-
-function formatCategoryLabel(value: string) {
-  if (value === "Home" || value === "All") return "Viral News";
-
-  return value
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function isViralCategory(category: string) {
   return category.trim().toLowerCase() === "viral";
@@ -56,12 +47,47 @@ function getSessionViews(postId: number, fallbackViews: number) {
   }
 }
 
+function getCategoryLabel(
+  t: ReturnType<typeof useTranslation>["t"],
+  activeCategory: string
+) {
+  const mainKey = `navbar.viral.main.${activeCategory}`;
+  const moreKey = `navbar.viral.more.${activeCategory}`;
+
+  const mainLabel = t(mainKey);
+
+  if (mainLabel !== mainKey) {
+    return mainLabel;
+  }
+
+  const moreLabel = t(moreKey);
+
+  if (moreLabel !== moreKey) {
+    return moreLabel;
+  }
+
+  return activeCategory
+    .replace(/([A-Z])/g, " $1")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+}
+
 export default function ViralHomePage({
   viral,
   activeCategory,
   onView,
+  language,
 }: Props) {
   const navigate = useNavigate();
+
+  const { t, i18n } = useTranslation();
+
+  useEffect(() => {
+    if (i18n.language !== language) {
+      i18n.changeLanguage(language);
+    }
+  }, [i18n, language]);
 
   const displayPosts = useMemo(() => {
     const postsWithLatestViews = viral.map((item) => ({
@@ -85,10 +111,12 @@ export default function ViralHomePage({
     return (
       <section className="mt-6">
         <div className="rounded-xl border border-border bg-card p-10 text-center shadow-sm">
-          <h2 className="text-2xl font-bold text-foreground">Viral</h2>
+          <h2 className="text-2xl font-bold text-foreground">{t("head.viral")}</h2>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            No viral posts available right now.
+            {language === "ta"
+              ? "இப்போது வைரல் பதிவுகள் இல்லை."
+              : "No viral posts available right now."}
           </p>
         </div>
       </section>
@@ -99,16 +127,17 @@ export default function ViralHomePage({
     <section className="mt-6">
       <div className="ml-3 mb-5 flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">
-            {formatCategoryLabel(activeCategory)}
+          <h2 className="text-2xl font-bold text-foreground">
+            {getCategoryLabel(t, activeCategory)}
           </h2>
         </div>
 
-        <span className="text-sm text-muted-foreground">Viral Home</span>
+        <span className="text-sm text-muted-foreground">
+          {language === "ta" ? "வைரல் முகப்பு" : "Viral Home"}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[65%_30%] gap-10">
-        {/* VIRAL CONTENT */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 pl-5">
           {displayPosts.map((item, index) => (
             <article

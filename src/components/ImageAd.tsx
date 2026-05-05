@@ -127,7 +127,7 @@ export default function ImageAd({
               event.stopPropagation();
               setIsClosed(true);
             }}
-            className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white shadow-md transition hover:bg-red-600"
+            className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white shadow-md transition hover:bg-red-600"
             aria-label="Close advertisement"
           >
             <X className="h-4 w-4" />
