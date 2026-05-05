@@ -292,12 +292,6 @@ export default function VideoHomePage({ videos }: Props) {
 
                 <h3 className="mt-4 text-lg font-semibold">{video.title}</h3>
 
-                {video.description && (
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
-                    {video.description}
-                  </p>
-                )}
-
                 <div className="mt-3">
                   <NewsButton
                     postId={video.id}
