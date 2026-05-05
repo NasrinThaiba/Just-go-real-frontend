@@ -106,6 +106,7 @@ export default function MainLayout({
                 key={currentTopAd}
                 src={currentTopAd}
                 alt="Top advertisement"
+                loading="lazy"
                 className="h-full w-full object-cover transition-opacity duration-500"
               />
             </a>
@@ -147,6 +148,7 @@ export default function MainLayout({
                 key={currentLeftAd}
                 src={currentLeftAd}
                 alt="Left advertisement"
+                loading="lazy"
                 className="h-full w-full object-cover transition-opacity duration-500"
               />
             </a>
@@ -188,6 +190,7 @@ export default function MainLayout({
                 key={currentRightAd}
                 src={currentRightAd}
                 alt="Right advertisement"
+                loading="lazy"
                 className="h-full w-full object-cover transition-opacity duration-500"
               />
             </a>
